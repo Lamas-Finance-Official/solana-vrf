@@ -30,34 +30,31 @@ To generate a new random hash we will:
 
 - Finally, derive the output hash from the proof
 
-## Implement VRF on Solana
+## Sketch implementation of VRF on Solana
 
 The flow of getting a random value on Solana blockchain will be something like:
 
 - (on-chain) The contract has to somehow notify the VRF-server that it requires a new random value, along with necessary data to continue the process after receiving the random value. We will call these necessary values the contract's `state`.
 
-- (off-chain) Gather some publicly known but unpredictable data to use as `seeds`.
+- (on-chain) Gather some publicly known but unpredictable data to use as `seeds`.
 
 - (off-chain) Generate the `proof` and `hash` from our `PrivateKey` and `seeds`.
 
 - (off-chain) Call the correct function in the contract and supply the `hash` as the random value and `proof` along with the `state`.
 
-- (on-chain) Verify that the random value is fair using the `proof`, `seeds` and `PublicKey`.
+- ~~(on-chain) Verify that the random value is fair using the `proof`, `seeds` and `PublicKey`.~~
 
 - (on-chain) Using the random value to continue processing.
 
 With this design, we will need at the very least 2 transactions (with 1 from the VRF-server itself) to have a random value to work with.
 
-### Notify the VRF-server from on-chain
-
-TODO
-
-### Generating proof and submiting it
-
-TODO
-
 ### Verify the proof on-chain
 
-TODO
+For now we will NOT verify the proof on-chain.
 
-Note: vrf-rs depends on OpenSsl which is a c library and thus does not work on-chain
+Instead we will store both the seeds, proof and the random result and make its public if needed.
+
+Note: The reason is: vrf-rs depends on OpenSsl which is a c library and thus does not work on-chain
+
+## Current implementation
+
