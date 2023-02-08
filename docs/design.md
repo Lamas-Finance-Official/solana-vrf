@@ -34,13 +34,13 @@ To generate a new random hash we will:
 
 The flow of getting a random value on Solana blockchain will be something like:
 
-- (on-chain) The contract has to somehow notify the VRF-server that it requires a new random value, along with necessary data to continue the process after receiving the random value. We will call these necessary values the contract's `state`.
-
 - (on-chain) Gather some publicly known but unpredictable data to use as `seeds`.
+
+- (on-chain) The contract has to somehow notify the VRF-server that it requires a new random value, along with necessary data to continue the process after receiving the random value. We will call these necessary values the contract's `state`.
 
 - (off-chain) Generate the `proof` and `hash` from our `PrivateKey` and `seeds`.
 
-- (off-chain) Call the correct function in the contract and supply the `hash` as the random value and `proof` along with the `state`.
+- (off-chain) Supply the `hash` as the random value and `proof` along with the `state` to the contract.
 
 - ~~(on-chain) Verify that the random value is fair using the `proof`, `seeds` and `PublicKey`.~~
 
@@ -52,9 +52,20 @@ With this design, we will need at the very least 2 transactions (with 1 from the
 
 For now we will NOT verify the proof on-chain.
 
-Instead we will store both the seeds, proof and the random result and make its public if needed.
+Instead we will store both the seeds, proof and the random result and make it public if needed.
 
 Note: The reason is: vrf-rs depends on OpenSsl which is a c library and thus does not work on-chain
 
 ## Current implementation
 
+- (on-chain) Use recent block hashes as random seeds
+
+- (on-chain) Emit anchor event (just a log message contains base64 encoded data) to notify the VRF-server
+
+- (off-chain) VRF-server listen to transaction logs and check if the contract has emit the event
+
+- (off-chain) Generate the `proof` and `hash` from our `PrivateKey` and `seeds`.
+
+- (off-chain) Supply the `hash` as the random value and `proof` along with the `state` to the contract.
+
+- (on-chain) Continue processing with the resulted random value
