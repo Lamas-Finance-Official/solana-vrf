@@ -1,3 +1,5 @@
 [workspace]
 members = [
+	"./vrf-sdk",
+	"./programs/anchor-using-vrf",
 ]
