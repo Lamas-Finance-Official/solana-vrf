@@ -1419,6 +1419,7 @@ name = "vrf-sdk"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "num-traits",
  "solana-program",
 ]
 

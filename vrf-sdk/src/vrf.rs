@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, ZeroCopy};
+use anchor_lang::prelude::*;
 
 #[event]
 pub struct VrfRequestRandomness {
@@ -52,10 +52,4 @@ impl VrfAccountData {
     pub const RESULT_BYTE_LEN: usize = 32;
     pub const PROOF_BYTE_LEN: usize = 80;
     pub const SEEDS_BYTE_LEN: usize = 32;
-}
-
-pub trait ToVrfAccountData: ZeroCopy + Owner {
-    fn to_vrf_account_data(&self) -> &VrfAccountData;
-
-    fn to_vrf_account_data_mut(&mut self) -> &mut VrfAccountData;
 }

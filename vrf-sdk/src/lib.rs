@@ -1,7 +1,9 @@
-use anchor_lang::{prelude::*, InstructionData, ToAccountMetas};
+use std::ops::{Deref, DerefMut, RangeInclusive};
+
+use anchor_lang::{prelude::*, InstructionData, ToAccountMetas, ZeroCopy};
+use num_traits::{AsPrimitive, PrimInt};
 
 pub mod vrf;
-pub use vrf::VrfAccountData;
 
 /// Declare a `VrfState` wrapper struct for [`VrfAccountData`].
 /// We willuse this struct to interact with the `vrf_sdk`
@@ -32,15 +34,19 @@ macro_rules! declare_vrf_state {
         #[account(zero_copy)]
         #[repr(packed)]
         pub struct $struct_name {
-            vrf: $crate::VrfAccountData,
+            vrf: $crate::vrf::VrfAccountData,
         }
 
-        impl $crate::vrf::ToVrfAccountData for $struct_name {
-            fn to_vrf_account_data(&self) -> &$crate::VrfAccountData {
+        impl std::ops::Deref for $struct_name {
+            type Target = $crate::vrf::VrfAccountData;
+
+            fn deref(&self) -> &Self::Target {
                 &self.vrf
             }
+        }
 
-            fn to_vrf_account_data_mut(&mut self) -> &mut $crate::VrfAccountData {
+        impl std::ops::DerefMut for $struct_name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.vrf
             }
         }
@@ -66,7 +72,7 @@ macro_rules! declare_vrf_state {
 ///     system_program: Program<'info, System>,
 /// }
 /// ```
-pub const ACCOUNT_SIZE: usize = std::mem::size_of::<VrfAccountData>() + /* DISCRIMINATOR */ 8;
+pub const ACCOUNT_SIZE: usize = std::mem::size_of::<vrf::VrfAccountData>() + /* DISCRIMINATOR */ 8;
 
 /// Request a new randomness value.
 /// The supplied `VrfState` should be created seperately for each request
@@ -90,19 +96,19 @@ pub const ACCOUNT_SIZE: usize = std::mem::size_of::<VrfAccountData>() + /* DISCR
 /// 	},
 /// )?;
 /// ```
-pub fn request_randomness<'info, VRF, CB, IX>(
-    vrf: &AccountLoader<'info, VRF>,
+pub fn request_randomness<VRF, CB, IX>(
+    vrf: &AccountLoader<'_, VRF>,
     callback: CB,
     callback_ix_data: IX,
 ) -> anchor_lang::Result<()>
 where
-    VRF: vrf::ToVrfAccountData,
+    VRF: DerefMut<Target = vrf::VrfAccountData> + ZeroCopy + Owner,
     CB: ToAccountMetas,
     IX: InstructionData,
 {
     let vrf_pubkey = vrf.key();
     let vrf = &mut vrf.load_init()?;
-    let vrf = vrf.to_vrf_account_data_mut();
+    let vrf = vrf.deref_mut();
 
     vrf.request_timestamp = Clock::get()?.unix_timestamp;
     vrf.callback.program_id = VRF::owner();
@@ -123,4 +129,47 @@ where
 
     emit!(vrf::VrfRequestRandomness { vrf: vrf_pubkey });
     Ok(())
+}
+
+/// Generate a random number from the `VrfState`
+/// that satisfy the provided range.
+///
+/// Example
+/// ```no_run
+/// 	let vrf = ctx.accounts.vrf.load()?;
+///		let result = vrf_sdk::random(vrf, 0..=100)?;
+/// 	assert!(0 <= result && result <= 100);
+/// ```
+pub fn random<VRF, VrfState, Int>(vrf: VRF, range: RangeInclusive<Int>) -> anchor_lang::Result<Int>
+where
+    VRF: Deref<Target = VrfState>,
+    VrfState: Deref<Target = vrf::VrfAccountData>,
+    Int: PrimInt + AsPrimitive<i128>,
+    i128: AsPrimitive<Int>,
+{
+    // compile time assertion that `vrf::VrfAccountData::RESULT_BYTE_LEN`
+    // must contains at least 16 bytes
+    const _: [(); 0 - !(vrf::VrfAccountData::RESULT_BYTE_LEN >= 16) as usize] = [];
+
+    let vrf = vrf.deref().deref();
+
+    // ensure that the vrf has completed
+    if vrf.result == [0u8; vrf::VrfAccountData::RESULT_BYTE_LEN] {
+        return Err(Error::AnchorError(AnchorError {
+            error_name: "VrfNotFulfilled".to_owned(),
+            error_code_number: 7777,
+            error_msg: "vrf_sdk::random() called on an empty VrfState".to_owned(),
+            error_origin: None,
+            compared_values: None,
+        }));
+    }
+
+    // convert the first 16 byte from the result to an i128
+    // we assert at compile time that the result contains at least 16 bytes, so unwrap is ok
+    let rand = i128::from_be_bytes(vrf.result[0..16].try_into().unwrap());
+
+    // apply the required range
+    let bound: i128 = (*range.end() - *range.start()).as_();
+    let out = ((rand % bound) + range.start().as_()).as_();
+    Ok(out)
 }
