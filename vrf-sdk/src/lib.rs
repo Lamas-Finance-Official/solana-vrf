@@ -97,6 +97,7 @@ pub const ACCOUNT_SIZE: usize = std::mem::size_of::<vrf::VrfAccountData>() + /* 
 /// )?;
 /// ```
 pub fn request_randomness<VRF, CB, IX>(
+    seeds: &[u8],
     vrf: &AccountLoader<'_, VRF>,
     callback: CB,
     callback_ix_data: IX,
@@ -106,9 +107,22 @@ where
     CB: ToAccountMetas,
     IX: InstructionData,
 {
+    if seeds.is_empty() || seeds.iter().map(|v| *v as u32).sum::<u32>() == 0 {
+        return Err(Error::AnchorError(AnchorError {
+            error_name: "Vrf seeds is zeroed or empty".to_owned(),
+            error_code_number: ErrorCode::ConstraintSeeds.into(),
+            error_msg: "Vrf seeds is zeroed or empty".to_owned(),
+            error_origin: None,
+            compared_values: None,
+        }));
+    }
+
     let vrf_pubkey = vrf.key();
     let vrf = &mut vrf.load_init()?;
     let vrf = vrf.deref_mut();
+
+    vrf.seeds[0..seeds.len().min(vrf::VrfAccountData::SEEDS_BYTE_LEN)]
+        .copy_from_slice(&seeds[0..seeds.len().min(vrf::VrfAccountData::SEEDS_BYTE_LEN)]);
 
     vrf.request_timestamp = Clock::get()?.unix_timestamp;
     vrf.callback.program_id = VRF::owner();
