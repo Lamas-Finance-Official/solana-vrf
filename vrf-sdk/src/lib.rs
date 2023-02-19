@@ -4,52 +4,16 @@ use anchor_lang::{prelude::*, InstructionData, ToAccountMetas, ZeroCopy};
 use num_traits::{AsPrimitive, PrimInt};
 
 pub mod vrf;
+pub use vrf_sdk_macro::declare_vrf_state;
 
-/// Declare a `VrfState` wrapper struct for [`VrfAccountData`].
-/// We willuse this struct to interact with the `vrf_sdk`
-/// through [`request_randomness`] function.
-///
-/// User should use this immediately after anchor `declare_id!()` macro.
-///
-/// Example
-/// ```no_run
-/// use anchor_lang::prelude::*;
-///
-/// declare_id!("6trpiXViFkrXFR1F1nMDGMyigUo89c53La2Bpc4mMwyG");
-/// vrf_sdk::declare_vrf_state!(VrfState);
-/// ```
-///
-/// We do this because anchor_lang::AccountLoader<'info, T> required
-/// that we implements anchor_lang::Owner, which is the program_id
-/// but we just a library and implement that is not trivial.
-/// So, as a work around we make a wrapper struct in the program itself
-/// via macro.
-#[macro_export]
-macro_rules! declare_vrf_state {
-    ($struct_name:ident) => {
-        /// Wrapper struct for `vrf_sdk::VrfAccountData`
-        ///
-        /// Each randomness request should create a new instance of this
-        /// struct on-chain, and call (request_randomness)[`vrf_sdk::request_randomness`]
-        #[account(zero_copy)]
-        #[repr(packed)]
-        pub struct $struct_name {
-            vrf: $crate::vrf::VrfAccountData,
-        }
-
-        impl std::ops::Deref for $struct_name {
-            type Target = $crate::vrf::VrfAccountData;
-
-            fn deref(&self) -> &Self::Target {
-                &self.vrf
-            }
-        }
-
-        impl std::ops::DerefMut for $struct_name {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.vrf
-            }
-        }
+/// Hidden, to be used by proc-macro declare_vrf_state
+#[doc(hidden)]
+pub mod __private {
+    pub use anchor_lang::{
+        prelude::Pubkey,
+        AccountDeserialize, Discriminator, Owner, ZeroCopy,
+        __private::bytemuck::{from_bytes, Pod, Zeroable},
+        error, Result,
     };
 }
 
