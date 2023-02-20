@@ -44,6 +44,9 @@ pub struct VrfAccountData {
     pub _buf: [u8; 1024],
 }
 
+unsafe impl anchor_lang::__private::bytemuck::Pod for VrfAccountData {}
+unsafe impl anchor_lang::__private::bytemuck::Zeroable for VrfAccountData {}
+
 impl anchor_lang::Discriminator for VrfAccountData {
     const DISCRIMINATOR: [u8; 8] = [101, 35, 62, 239, 103, 151, 6, 18];
 }
