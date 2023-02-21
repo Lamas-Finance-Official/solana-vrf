@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use solana_program::sysvar::recent_blockhashes;
 
-declare_id!("6trpiXViFkrXFR1F1nMDGMyigUo89c53La2Bpc4mMwyG");
+declare_id!("3gfec8ANuaWzkNhAR5QRjUvGqUjMYLJ3YnSVhgMkugqv");
 
 vrf_sdk::declare_vrf_state!(VrfState);
 
