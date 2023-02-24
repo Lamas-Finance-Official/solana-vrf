@@ -7,6 +7,5 @@ vrf-private-key = [
 cluster = "devnet"
 commitment = "finalized"
 program-ids = [
-	"DEoxdV1CCWvbeGp8PpwkUifmm3pV5AgtFwFaS4P7qZeZ",
-	"Bw2HwtYcTro3nzYt2XFqKA3iu4worp5qkgmrNXVZYEAE",
+	"3gfec8ANuaWzkNhAR5QRjUvGqUjMYLJ3YnSVhgMkugqv",
 ]

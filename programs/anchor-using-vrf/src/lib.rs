@@ -120,6 +120,7 @@ pub struct CoinFlipResult<'info> {
     owner: Signer<'info>,
 
     /// CHECK: We checked that vrf PDA seeds contains user pubkey
+    #[account(mut)]
     user: AccountInfo<'info>,
 
     #[account(mut, has_one = owner, seeds = [ b"program_state" ], bump)]
