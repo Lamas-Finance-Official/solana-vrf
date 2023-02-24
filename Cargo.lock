@@ -4500,6 +4500,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_with",
+ "solana-transaction-status",
  "tokio",
  "tracing",
  "tracing-subscriber",

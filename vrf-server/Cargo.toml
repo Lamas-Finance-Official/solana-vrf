@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anchor-client = "0.26"
+solana-transaction-status = "~1.14"
 vrf = "0.2"
 vrf-sdk = { path = "../vrf-sdk" }
 

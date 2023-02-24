@@ -9,9 +9,12 @@ use backoff::ExponentialBackoff;
 use futures_util::StreamExt;
 use vrf_sdk::__private::Pubkey;
 
+use crate::{process::process, process_old_trans::process_old_transaction};
+
 mod config;
 mod parse_logs;
 mod process;
+mod process_old_trans;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,6 +38,8 @@ async fn main() -> anyhow::Result<()> {
         config.cluster.url().to_string(),
         config.commitment,
     ));
+
+    tokio::spawn(process_old_transaction(config.clone(), rpc_client.clone()));
 
     let handles = config
         .program_ids
@@ -102,25 +107,25 @@ pub async fn logs_subscribe(
                             transaction = signature
                         );
 
-                        let _enter = span.enter();
                         if let Some(err) = err {
-                            tracing::info!(
-                            "Skipping error transaction of {program_id} ({signature}):\n{err:#}"
-                        );
+                            span.in_scope(|| {
+                                tracing::info!("Skipping error transaction:\n{err:#}")
+                            });
                             return;
                         }
 
-                        match process::process(
-                            &config,
-                            &rpc_client,
-                            &program_id_pubkey,
-                            &span,
-                            &logs,
-                        )
-                        .await
+                        span.in_scope(|| tracing::info!("Start processing"));
+                        match process(&config, &rpc_client, &program_id_pubkey, &span, &logs).await
                         {
-                            Ok(_) => todo!(),
-                            Err(_) => todo!(),
+                            Ok(_) => {
+                                // TODO
+                                span.in_scope(|| tracing::info!("Finished!"));
+                            }
+                            Err(err) => {
+                                span.in_scope(|| {
+                                    tracing::error!("Error processing transaction:\n{err:#}")
+                                });
+                            }
                         }
                     });
                 }
