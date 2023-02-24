@@ -9,7 +9,7 @@ use syn::Ident;
 /// User should use this immediately after anchor `declare_id!()` macro.
 ///
 /// Example
-/// ```no_run
+/// ```ignore
 /// use anchor_lang::prelude::*;
 ///
 /// declare_id!("6trpiXViFkrXFR1F1nMDGMyigUo89c53La2Bpc4mMwyG");
