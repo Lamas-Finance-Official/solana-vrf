@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut, RangeInclusive};
+use std::ops::{DerefMut, RangeInclusive};
 
 use anchor_lang::{prelude::*, InstructionData, ToAccountMetas, ZeroCopy};
 use num_traits::{AsPrimitive, PrimInt};
@@ -86,8 +86,8 @@ where
     let vrf = &mut vrf.load_init()?;
     let vrf = vrf.deref_mut();
 
-    vrf.seeds[0..seeds.len().min(vrf::VrfAccountData::SEEDS_BYTE_LEN)]
-        .copy_from_slice(&seeds[0..seeds.len().min(vrf::VrfAccountData::SEEDS_BYTE_LEN)]);
+    vrf.seeds[0..seeds.len().min(vrf::SEEDS_BYTE_LEN)]
+        .copy_from_slice(&seeds[0..seeds.len().min(vrf::SEEDS_BYTE_LEN)]);
 
     vrf.request_timestamp = Clock::get()?.unix_timestamp;
     vrf.callback.program_id = VRF::owner();
@@ -110,45 +110,59 @@ where
     Ok(())
 }
 
-/// Generate a random number from the `VrfState`
-/// that satisfy the provided range.
-///
-/// Example
-/// ```ignore
-/// 	let vrf = ctx.accounts.vrf.load()?;
-///		let result = vrf_sdk::random(vrf, 0..=100)?;
-/// 	assert!(0 <= result && result <= 100);
-/// ```
-pub fn random<VRF, VrfState, Int>(vrf: VRF, range: RangeInclusive<Int>) -> anchor_lang::Result<Int>
-where
-    VRF: Deref<Target = VrfState>,
-    VrfState: Deref<Target = vrf::VrfAccountData>,
-    Int: PrimInt + AsPrimitive<i128>,
-    i128: AsPrimitive<Int>,
-{
-    // compile time assertion that `vrf::VrfAccountData::RESULT_BYTE_LEN`
-    // must contains at least 16 bytes
-    const _: [(); 0 - !(vrf::VrfAccountData::RESULT_BYTE_LEN >= 16) as usize] = [];
+#[zero_copy]
+#[derive(AnchorSerialize, AnchorDeserialize)]
+#[repr(packed)]
+pub struct VrfResult {
+    pub result: [u8; vrf::RESULT_BYTE_LEN],
+}
 
-    let vrf = vrf.deref().deref();
-
-    // ensure that the vrf has completed
-    if vrf.result == [0u8; vrf::VrfAccountData::RESULT_BYTE_LEN] {
-        return Err(Error::AnchorError(AnchorError {
-            error_name: "VrfNotFulfilled".to_owned(),
-            error_code_number: 7777,
-            error_msg: "vrf_sdk::random() called on an empty VrfState".to_owned(),
-            error_origin: None,
-            compared_values: None,
-        }));
+impl Default for VrfResult {
+    fn default() -> Self {
+        Self {
+            result: vrf::VRF_RESULT_DISCRIMINATOR,
+        }
     }
+}
 
-    // convert the first 16 byte from the result to an i128
-    // we assert at compile time that the result contains at least 16 bytes, so unwrap is ok
-    let rand = i128::from_be_bytes(vrf.result[0..16].try_into().unwrap());
+impl VrfResult {
+    /// Generate a random number from the `VrfState`
+    /// that satisfy the provided range.
+    ///
+    /// Example
+    /// ```ignore
+    ///		let result = vrf_result.random(0..=100)?;
+    /// 	assert!(0 <= result && result <= 100);
+    /// ```
+    pub fn random<Int>(self, range: RangeInclusive<Int>) -> anchor_lang::Result<Int>
+    where
+        Int: PrimInt + AsPrimitive<i128>,
+        i128: AsPrimitive<Int>,
+    {
+        // compile time assertion that `vrf::VrfAccountData::RESULT_BYTE_LEN`
+        // must contains at least 16 bytes
+        const _: [(); 0 - !(vrf::RESULT_BYTE_LEN >= 16) as usize] = [];
 
-    // apply the required range
-    let bound: i128 = (*range.end() - *range.start()).as_();
-    let out = ((rand % bound) + range.start().as_()).as_();
-    Ok(out)
+        // ensure that the vrf has completed
+        if &self.result == &[0u8; vrf::RESULT_BYTE_LEN]
+            || &self.result == &vrf::VRF_RESULT_DISCRIMINATOR
+        {
+            return Err(Error::AnchorError(AnchorError {
+                error_name: "VrfNotFulfilled".to_owned(),
+                error_code_number: 7777,
+                error_msg: "vrf_sdk::random() called on an empty VrfState".to_owned(),
+                error_origin: None,
+                compared_values: None,
+            }));
+        }
+
+        // convert the first 16 byte from the result to an i128
+        // we assert at compile time that the result contains at least 16 bytes, so unwrap is ok
+        let rand = i128::from_be_bytes(self.result[0..16].try_into().unwrap());
+
+        // apply the required range
+        let bound: i128 = (*range.end() - *range.start()).as_();
+        let out = ((rand % bound) + range.start().as_()).as_();
+        Ok(out)
+    }
 }

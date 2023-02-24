@@ -1,5 +1,14 @@
 use anchor_lang::prelude::*;
 
+pub const RESULT_BYTE_LEN: usize = 32;
+pub const PROOF_BYTE_LEN: usize = 80;
+pub const SEEDS_BYTE_LEN: usize = 32;
+
+pub const VRF_RESULT_DISCRIMINATOR: [u8; 32] = [
+    169, 181, 96, 37, 231, 213, 250, 114, 103, 201, 179, 141, 92, 38, 30, 87, 115, 210, 50, 29,
+    136, 193, 41, 211, 45, 205, 112, 191, 205, 195, 2, 105,
+];
+
 #[event]
 pub struct VrfRequestRandomness {
     pub vrf: Pubkey,
@@ -31,9 +40,9 @@ pub struct CallbackPacked {
 #[zero_copy]
 #[repr(packed)]
 pub struct VrfAccountData {
-    pub result: [u8; Self::RESULT_BYTE_LEN],
-    pub proof: [u8; Self::PROOF_BYTE_LEN],
-    pub seeds: [u8; Self::SEEDS_BYTE_LEN],
+    pub result: crate::VrfResult,
+    pub proof: [u8; PROOF_BYTE_LEN],
+    pub seeds: [u8; SEEDS_BYTE_LEN],
 
     /// The unix timestamp when the VRF round was opened.
     pub request_timestamp: i64,
@@ -49,10 +58,4 @@ unsafe impl anchor_lang::__private::bytemuck::Zeroable for VrfAccountData {}
 
 impl anchor_lang::Discriminator for VrfAccountData {
     const DISCRIMINATOR: [u8; 8] = [101, 35, 62, 239, 103, 151, 6, 18];
-}
-
-impl VrfAccountData {
-    pub const RESULT_BYTE_LEN: usize = 32;
-    pub const PROOF_BYTE_LEN: usize = 80;
-    pub const SEEDS_BYTE_LEN: usize = 32;
 }
