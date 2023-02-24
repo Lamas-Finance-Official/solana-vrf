@@ -115,7 +115,7 @@ pub struct CoinFlipRequest<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(_vrf_round: u64)]
+#[instruction(vrf_result: vrf_sdk::VrfResult, bet_amount: u64, _vrf_round: u64)]
 pub struct CoinFlipResult<'info> {
     owner: Signer<'info>,
 
