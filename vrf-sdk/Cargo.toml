@@ -1,0 +1,11 @@
+[package]
+name = "vrf-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vrf-sdk-macro = { path = "./proc-macro" }
+
+anchor-lang = "~0.26"
+solana-program = "~1.14"
+num-traits = "0.2"
