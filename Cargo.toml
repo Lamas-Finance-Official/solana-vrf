@@ -1,0 +1,7 @@
+[workspace]
+members = [
+	"./vrf-sdk",
+	"./vrf-sdk/proc-macro",
+	"./vrf-server",
+	"./programs/anchor-using-vrf",
+]
